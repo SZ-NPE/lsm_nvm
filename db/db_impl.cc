@@ -1314,7 +1314,9 @@ void* DBImpl::read_thread(void *arg) {
 
     switch (val) {
 
+    // Memtable 读线程
     case MEMTBL_THRD:
+        // memt hit
         if (!kCheckCond && (ret = g_mem->Get(*lkey, value, s))) {
             current->SetTerminate();
             kCheckCond = 1;
@@ -1322,12 +1324,14 @@ void* DBImpl::read_thread(void *arg) {
             str->done = true;
         } else if (!kCheckCond && g_imm != NULL &&
                 (ret = g_imm->Get(*lkey, value, s))) {
+            // imm hit
             current->SetTerminate();
             kCheckCond = 1;
             incr_imm_hits();
             str->done = true;
         }
         break;
+    // SST 读线程
     case SSTBL_THRD:
         //Version* current = str->current;
         Version::GetStats *stats;
@@ -1433,11 +1437,15 @@ Status DBImpl::Get(const ReadOptions& options,
         knvmhit = mem_->CheckPredictIndex(&mem_->predict_set,
                 (const uint8_t*)key.data());
 
+    // 开启了并行读
     if ((num_threads >= 1) && thpool) {
         kCheckCond = 0;
         for (int i = 0; i < num_threads; i++) {
+            // 检查布隆过滤器是否包含，如果包含那就直接单线程 run
             if(predict_on && knvmhit)
                 goto no_thread;
+            
+            // 不包含那就为 Memtable 的查询开启一个线程
             //str[i].val = SSTBL_THRD;
             str[i].val = MEMTBL_THRD;
             str[i].lkey = &lkey;
@@ -1452,11 +1460,14 @@ Status DBImpl::Get(const ReadOptions& options,
             //read_thread(&str[i]);
         }
 
+        // 如果创建的不是 mem 的读线程
         if ((str[0].val != MEMTBL_THRD)) {
+            // 主线程就去读 mem 和 imm
             if (g_mem && g_mem->Get(lkey, value, &s)) {
                 done =true;
                 kCheckCond = true;
                 mem_found = true;
+                // 找到了就不用读 imm
                 goto pool_wait;
             }
             if (g_imm && g_imm->Get(lkey, value, &s)) {
@@ -1465,11 +1476,13 @@ Status DBImpl::Get(const ReadOptions& options,
                 imm_found = true;
             }
         }else {
+            // 新创建的线程是 mem，那么主线程就去读 sst
             s = current->Get(options, lkey, value, &stats);
             sstable_found = true;
         }
         pool_wait:
         //if(!done)
+        // 等待线程完成
         thpool_wait(thpool);
 
         for (int i = 0; i < num_threads; i++) {
@@ -1494,6 +1507,8 @@ Status DBImpl::Get(const ReadOptions& options,
     }
     else {
 
+        // 未开启并行读则执行如下逻辑
+        // mem 和 nvmmem 一次只有一个生效
 no_thread:
         //TODO: Add a macro condition
         if (CheckSearchCondition(mem_) && mem_->Get(lkey, value, &s)) {

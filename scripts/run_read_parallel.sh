@@ -25,10 +25,11 @@ MAKE() {
   make -j8
 }
 
-
+# 检查参数以及编译
 SETUP
 MAKE
 
+# 读线程为 0，即只有一个主线程去读
 echo " "
 echo "**************************************"
 echo "  Without Read Threading              "
@@ -39,6 +40,7 @@ $APP_PREFIX $DBBENCH/db_bench --threads=$NUMTHREAD --num=$NUMKEYS --benchmarks=$
 	--value_size=$VALUSESZ $OTHERPARAMS --num_read_threads=0
 SETUP
 
+# 读线程为 1，需要检查 dbbench 实现
 #Run all benchmarks
 echo " "
 echo "**************************************"

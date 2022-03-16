@@ -14,6 +14,7 @@ MAKE() {
   #rm -rf CMakeCache.txt
   #cmake -DCMAKE_BUILD_TYPE=Release ..
   make clean
+  # make -j40
   make -j$PARA
   cd $NOVELSMSRC
 }

@@ -25,6 +25,7 @@
 #       -DSNAPPY                     if the Snappy library is present
 #
 
+# 检查两个输入参数
 OUTPUT=$1
 PREFIX=$2
 if test -z "$OUTPUT" || test -z "$PREFIX"; then
@@ -32,6 +33,7 @@ if test -z "$OUTPUT" || test -z "$PREFIX"; then
   exit 1
 fi
 
+# 删除已有的输出，然后创建新的
 # Delete existing output, if it exists
 rm -f $OUTPUT
 touch $OUTPUT
@@ -52,7 +54,8 @@ fi
 if test -z "$TARGET_OS"; then
     TARGET_OS=`uname -s`
 fi
-
+ 
+# 可以开启 pmemio
 COMMON_FLAGS=
 CROSS_COMPILE=
 PLATFORM_CCFLAGS=
@@ -71,6 +74,7 @@ if [ "$CXX" = "g++" ]; then
     MEMCMP_FLAG="-fno-builtin-memcmp -fpermissive"
 fi
 
+# 根据不同的 OS 设置不同的参数
 case "$TARGET_OS" in
     CYGWIN_*)
         PLATFORM=OS_LINUX
@@ -190,6 +194,8 @@ EOF
         COMMON_FLAGS="$COMMON_FLAGS -DUSE_OFFSETS"
         COMMON_FLAGS="$COMMON_FLAGS -DENABLE_RECOVERY"
         COMMON_FLAGS="$COMMON_FLAGS -D_ENABLE_PREDICTION"
+
+        # 可以在此处开启 pmemio 
         #COMMON_FLAGS="$COMMON_FLAGS -D_ENABLE_PMEMIO"
         #COMMON_FLAGS="$COMMON_FLAGS -D_DISABLE_SYNC_FOR_DAX"
         #COMMON_FLAGS="$COMMON_FLAGS -D_SIMULATE_FAILURE"
